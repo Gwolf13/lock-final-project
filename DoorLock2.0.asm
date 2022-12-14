@@ -35,7 +35,7 @@
  CONFIG SCANE=available
  CONFIG LVP=ON 
  CONFIG CP=OFF
- CONFIG CPD=OFF 
+ CONFIG CPD=OF 
   
  PSECT res_vect, class=CODE, delta=2
 res_vect:
@@ -59,7 +59,7 @@ Start:
 				
     WRONG_ATTEMPT_COUNTER EQU 70H
     CURRENT_INPUT EQU 72H
- 
+    
     ; prep for leds
     ; make the pins digital
     banksel ANSELA
@@ -193,7 +193,7 @@ LOOP_ONE:
     goto STATE_TWO
     
     ; If the wrong input was entered go to state 11. Light up red
-    goto STATE_ELEVEN
+    goto STATE_SIX
     
     
     
@@ -228,7 +228,7 @@ LOOP_TWO:
     goto STATE_THREE
     
     ; wrong button pressed go to state 11
-    goto STATE_ELEVEN
+    goto STATE_SEVEN
     
 	
 STATE_THREE:
@@ -260,7 +260,7 @@ LOOP_THREE:
     goto STATE_FOUR
     
     ; if wrong button was entered go to state 11
-    goto STATE_ELEVEN
+    goto STATE_EIGHT
 
 STATE_FOUR:
     ; reset input
@@ -291,13 +291,19 @@ LOOP_FOUR:
     goto STATE_FIVE
     
     ; wrong input go to state 11 light up red led
-    goto STATE_ELEVEN
+    goto STATE_NINE
     
 STATE_FIVE:
     ; reset input
     movlw 00H
     banksel CURRENT_INPUT ; init to hold 1000 0000
     movwf CURRENT_INPUT
+    
+    ;reset wrong attempt counter
+    movlw 00H
+    banksel WRONG_ATTEMPT_COUNTER ; init to hold 1000 0000
+    movwf WRONG_ATTEMPT_COUNTER
+    
     
     ; light up RA1(green)
     banksel LATA
@@ -410,19 +416,53 @@ LOOP_EIGHT:
 STATE_NINE:
     ; increment WRONG_ATTEMPT_COUNTER 
     movf WRONG_ATTEMPT_COUNTER, w; move WRONG_ATTEMPT_COUNTER to working register
-    incf w, 1; increment w
+    addlw 1; incremnt 
+    movwf WRONG_ATTEMPT_COUNTER
     ; check WRONG_ATTEMPT_COUNTER using overflow
-    addlw 253; add 253 to working register
-    ; overflow
+    movlw 253 ; move 255 to working register
+    addwf WRONG_ATTEMPT_COUNTER, w; add current input and 255 and store to working register
+    ; no overflow
     banksel STATUS
     
     btfss STATUS, 0
-    goto STATE_TEN 
-    ; no overflow
     goto STATE_ELEVEN
+    ; overflow
+    goto STATE_TEN
     
 STATE_TEN:
-    ;;
+    movlw 00H
+    banksel CURRENT_INPUT ; init to hold 1000 0000
+    movwf CURRENT_INPUT 
+    
+    ; reset wrong attempt counter
+    movlw 00H
+    banksel WRONG_ATTEMPT_COUNTER ; init to hold 1000 0000
+    movwf WRONG_ATTEMPT_COUNTER
+    
+    ; light up RA0(red) and RA1(green)
+    banksel LATA
+    bsf LATA, 0
+    bsf LATA, 1
+    
+LOOP_TEN:
+    call RECIEVE_INPUT
+    
+    movlw 255 ; move 255 to working register
+    addwf CURRENT_INPUT, w; add current input and 255 and store to working register
+    
+    banksel STATUS
+    
+    btfss STATUS, 0
+    goto LOOP_TEN
+    
+    ; If start button was pressed go back to state one
+    ; If start button wasn't pressed skip the goto state_zero instruction
+    btfsc CURRENT_INPUT, 0
+    goto STATE_ONE
+    
+    goto STATE_TEN
+    
+    
     
 STATE_ELEVEN:
     movlw 00H
