@@ -35,7 +35,7 @@
  CONFIG SCANE=available
  CONFIG LVP=ON 
  CONFIG CP=OFF
- CONFIG CPD=OF 
+ CONFIG CPD=OFF 
   
  PSECT res_vect, class=CODE, delta=2
 res_vect:
